@@ -56,13 +56,27 @@ async function run() {
   }
 });
 
+      
+     app.put("/courses/:id", async (req, res) => {
+  const { id } = req.params;         
+  const updatedData = req.body;      
+
+  const objectId = new ObjectId(id);  
+  const filter = { _id: objectId };    
+  const update = { $set: updatedData }; 
+
+  // Perform the update operation
+  const result = await courseCollection.updateOne(filter, update);
+
+  res.send(result);
+});
 
 
     app.post("/courses", async (req, res) => {
   const newCorse = req.body;
   const result = await courseCollection.insertOne(newCorse);
   res.send(result);
-});
+   });
 
 
     await client.db("admin").command({ ping: 1 });
