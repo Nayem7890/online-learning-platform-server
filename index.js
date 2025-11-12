@@ -1,6 +1,6 @@
 const express = require('express')
 const cors = require('cors')
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express()
 const port = 3000
 
@@ -33,6 +33,30 @@ async function run() {
       const result = await courseCollection.find().toArray();
       res.send(result);
     });
+
+    app.get("/courses/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // validate id first
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).send({ message: "Invalid course id" });
+    }
+
+    const course = await courseCollection.findOne({ _id: new ObjectId(id) });
+
+    if (!course) {
+      return res.status(404).send({ message: "Course not found" });
+    }
+
+    res.send(course);
+  } catch (err) {
+    console.error("GET /courses/:id failed:", err);
+    res.status(500).send({ message: "Internal server error" });
+  }
+});
+
+
 
     app.post("/courses", async (req, res) => {
   const newCorse = req.body;
