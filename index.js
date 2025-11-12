@@ -71,6 +71,35 @@ async function run() {
   res.send(result);
 });
 
+     app.delete("/courses/:id", async (req, res) => {
+  const { id } = req.params;         
+  const updatedData = req.body;      
+
+  const objectId = new ObjectId(id);  
+  const filter = { _id: objectId };    
+  const update = { $set: updatedData }; 
+
+  // Perform the update operation
+  const result = await courseCollection.deleteOne(filter);
+
+  res.send(result);
+});
+
+app.get("/popular-courses", async (req, res) => {
+  try {
+    const docs = await courseCollection
+      .find({})
+      .sort({ "rating.avg": -1, createdAt: -1 })
+      .limit(6)
+      .toArray();
+    res.json(docs);
+  } catch (err) {
+    console.error("❌ Error fetching popular courses:", err);
+    res.status(500).json({ error: "Failed to fetch popular courses" });
+  }
+});
+
+
 
     app.post("/courses", async (req, res) => {
   const newCorse = req.body;
