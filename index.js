@@ -28,6 +28,9 @@ async function run() {
 
     const db = client.db("course-db");
     const courseCollection = db.collection("courses");
+    const enrolledCollection = db.collection("enrolled");
+     
+
 
     app.get("/courses", async (req, res) => {
       const result = await courseCollection.find().toArray();
@@ -99,6 +102,110 @@ app.get("/popular-courses", async (req, res) => {
   }
 });
 
+  app.post("/my-enrolled-course", async (req, res) => {
+  try {
+    const { courseId, studentEmail, studentName, studentPhoto } = req.body;
+
+    // Basic validation
+    if (!courseId || !studentEmail) {
+      return res
+        .status(400)
+        .json({ message: "courseId and studentEmail are required" });
+    }
+
+    // --- IMPORTANT: Handle ObjectId ---
+    // The 'id' from your frontend is a string.
+    // To match it in the database (and for lookups), you must convert it to a MongoDB ObjectId.
+    let courseObjectId;
+    try {
+      courseObjectId = new ObjectId(courseId);
+    } catch (e) {
+      return res.status(400).json({ message: "Invalid courseId format" });
+    }
+
+    // 1. Check if the user is ALREADY enrolled
+    const existingEnrollment = await enrolledCollection.findOne({
+      courseId: courseObjectId,
+      studentEmail: studentEmail,
+    });
+
+    if (existingEnrollment) {
+      // 409 Conflict: This matches the '409' check on your frontend!
+      return res
+        .status(409)
+        .json({ message: "You are already enrolled in this course" });
+    }
+
+    // 2. If not enrolled, create the new enrollment document
+    const newEnrollment = {
+      courseId: courseObjectId, // Store the ID as an ObjectId
+      studentEmail,
+      studentName,
+      studentPhoto,
+      enrolledAt: new Date(), // Add a timestamp for enrollment
+    };
+
+    // 3. Insert the new document into the database
+    const result = await enrolledCollection.insertOne(newEnrollment);
+
+    // 4. Send a success response
+    res.status(201).json(result); // 201 Created is the correct status
+  } catch (err) {
+    console.error("POST /my-enrolled-course failed:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+ 
+     app.get("/my-enrolled-course", async (req, res) => {
+  try {
+    const { studentEmail } = req.query;
+    if (!studentEmail) {
+      return res.status(400).json({ message: "studentEmail is required" });
+    }
+
+    // This 'pipeline' is what finds the enrollments AND
+    // joins them with the full course details.
+    const pipeline = [
+      {
+        // 1. Find enrollments for the specific student
+        $match: { studentEmail: studentEmail },
+      },
+      {
+        // 2. Sort by newest first
+        $sort: { enrolledAt: -1 },
+      },
+      {
+        // 3. Join with the 'courses' collection
+        $lookup: {
+          from: "courses", // The name of your courses collection
+          localField: "courseId", // The field on 'enrolledCollection'
+          foreignField: "_id", // The field on 'courses' collection
+          as: "course", // The name of the new array field to add
+        },
+      },
+      {
+        // 4. Unpack the 'course' array into a single object
+        $unwind: {
+          path: "$course",
+          // Keep the enrollment even if the course was somehow deleted
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    ];
+
+    // Use the 'enrolledCollection' to run the aggregation
+    const enrollmentsWithCourseData = await enrolledCollection
+      .aggregate(pipeline)
+      .toArray();
+
+    // Send the joined data back to MyEnrolled.jsx
+    res.json(enrollmentsWithCourseData);
+    
+  } catch (err) {
+    console.error("GET /my-enrolled-course failed:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 
 
     app.post("/courses", async (req, res) => {
