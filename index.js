@@ -1,4 +1,4 @@
-// index.js
+
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
@@ -9,16 +9,16 @@ const serviceAccount = require("./serviceKey.json");
 const app = express();
 const port = process.env.PORT || 3000;
 
-// --- Firebase Admin init ---
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-// --- Global middleware ---
+
 app.use(cors());
 app.use(express.json());
 
-// --- MongoDB setup ---
+
 const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.9puxf5x.mongodb.net/?appName=Cluster0`;
 
 const client = new MongoClient(uri, {
@@ -29,9 +29,9 @@ const client = new MongoClient(uri, {
   },
 });
 
-// --- Auth middleware (protected routes only) ---
+
 const middleware = async (req, res, next) => {
-  // Allow preflight requests
+  
   if (req.method === "OPTIONS") {
     return next();
   }
@@ -46,7 +46,7 @@ const middleware = async (req, res, next) => {
 
   const [scheme, token] = authorization.split(" ");
 
-  // Expect "Bearer <token>"
+  
   if (scheme !== "Bearer" || !token) {
     return res
       .status(401)
@@ -55,7 +55,7 @@ const middleware = async (req, res, next) => {
 
   try {
     const decodedUser = await admin.auth().verifyIdToken(token);
-    req.user = decodedUser; // attach user
+    req.user = decodedUser; 
     return next();
   } catch (error) {
     console.log("Token error:", error.message);
@@ -65,7 +65,7 @@ const middleware = async (req, res, next) => {
   }
 };
 
-// --- Public root route (so opening the domain is NOT 401) ---
+
 app.get("/", (req, res) => {
   res.send("SkillSphere API is running 🚀");
 });
@@ -73,13 +73,13 @@ app.get("/", (req, res) => {
 async function run() {
   try {
     
-    // await client.connect();
+  
 
     const db = client.db("course-db");
     const courseCollection = db.collection("courses");
     const enrolledCollection = db.collection("enrolled");
 
-    // --- PUBLIC: get all courses ---
+   
     app.get("/courses", async (req, res) => {
       try {
         const cursor = courseCollection.find();
@@ -91,7 +91,7 @@ async function run() {
       }
     });
 
-    // --- PROTECTED: get one course by id ---
+    
     app.get("/courses/:id", middleware, async (req, res) => {
       try {
         const { id } = req.params;
@@ -115,7 +115,7 @@ async function run() {
       }
     });
 
-    // --- PROTECTED: update course ---
+    
     app.put("/courses/:id", middleware, async (req, res) => {
       try {
         const { id } = req.params;
@@ -136,7 +136,7 @@ async function run() {
       }
     });
 
-    // --- PROTECTED: delete course ---
+    
     app.delete("/courses/:id", middleware, async (req, res) => {
       try {
         const { id } = req.params;
@@ -169,7 +169,7 @@ async function run() {
   }
 });
 
-    // --- PROTECTED: create enrollment ---
+    
     app.post("/my-enrolled-course", middleware, async (req, res) => {
       try {
         const { courseId, studentEmail, studentName, studentPhoto } = req.body;
@@ -214,7 +214,7 @@ async function run() {
       }
     });
 
-    // --- PROTECTED: get enrolled courses for a student (with course data join) ---
+    
     app.get("/my-enrolled-course", middleware, async (req, res) => {
       try {
         const { studentEmail } = req.query;
@@ -252,7 +252,7 @@ async function run() {
       }
     });
 
-    // --- PROTECTED: add new course ---
+    
     app.post("/courses", middleware, async (req, res) => {
       try {
         const newCourse = req.body;
@@ -272,13 +272,12 @@ async function run() {
 
 run().catch(console.dir);
 
-// --- Local dev only: start server ---
-// (Vercel will ignore app.listen and use `module.exports = app` instead)
+
 if (process.env.NODE_ENV !== "production") {
   app.listen(port, () => {
     console.log(`Server listening on port ${port}`);
   });
 }
 
-// --- Export app for Vercel / other platforms ---
+
 module.exports = app;
