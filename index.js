@@ -154,7 +154,7 @@ async function run() {
       }
     });
 
-    // --- PUBLIC: popular courses ---
+    
     app.get("/popular-courses", async (req, res) => {
   try {
     const docs = await courseCollection
